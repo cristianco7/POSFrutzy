@@ -7,7 +7,8 @@ import { Plus, Pencil, Trash2, Check, X, Settings } from "lucide-react";
 type AdminTab = "products" | "flavors" | "extras";
 
 export function AdminPanel() {
-  const { categories, products, flavors, extras, setProducts, setFlavors, setExtras } = usePOS();
+  const { categories, products, flavors, extras, setProducts, setFlavors, setExtras, toggleFlavorAvailability } = usePOS();
+
   const [tab, setTab] = useState<AdminTab>("products");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingFlavor, setEditingFlavor] = useState<Flavor | null>(null);
@@ -61,7 +62,8 @@ export function AdminPanel() {
 
   const handleAddFlavor = () => {
     if (!fName.trim()) return;
-    setFlavors([...flavors, { id: `flavor-${Date.now()}`, name: fName.trim(), color: fColor }]);
+    setFlavors([...flavors, { id: `flavor-${Date.now()}`, name: fName.trim(), color: fColor, available: true }]);
+
     setFName(""); setShowAddFlavor(false);
   };
 
@@ -247,10 +249,29 @@ export function AdminPanel() {
                   <>
                     <div className="flex items-center gap-3">
                       <span className="w-8 h-8 rounded-full border-2 border-border shadow-sm" style={{ background: flavor.color }} />
-                      <span className="font-700 text-foreground text-sm">{flavor.name}</span>
+                      <div className="flex flex-col">
+                        <span className="font-700 text-foreground text-sm leading-tight">{flavor.name}</span>
+                        <span className={`text-[10px] font-900 ${flavor.available ? 'text-success' : 'text-destructive'}`}>
+                          {flavor.available ? 'DISPONIBLE' : 'AGOTADO'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-2">
+                      {/* Availability Toggle */}
+                      <button
+                        onClick={() => toggleFlavorAvailability(flavor.id, !flavor.available)}
+                        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${
+                          flavor.available ? "bg-success" : "bg-muted"
+                        }`}
+                      >
+                        <div
+                          className={`w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                            flavor.available ? "translate-x-6" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
                       <button onClick={() => setEditingFlavor(flavor)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center active:scale-95">
+
                         <Pencil className="w-3.5 h-3.5 text-secondary-foreground" />
                       </button>
                       <button onClick={() => handleDeleteFlavor(flavor.id)} className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center active:scale-95">

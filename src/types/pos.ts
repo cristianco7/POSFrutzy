@@ -17,6 +17,7 @@ export interface Flavor {
   id: string;
   name: string;
   color: string;
+  available: boolean;
 }
 
 export interface Product {
@@ -51,7 +52,9 @@ export interface Order {
   items: CartItem[];
   status: OrderStatus;
   total: number;
+  location: string;
   createdAt: Date;
   updatedAt: Date;
   customerNote?: string;
 }
+

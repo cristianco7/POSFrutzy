@@ -14,13 +14,21 @@ export function OrderSummary({ onClose, onOrderPlaced }: OrderSummaryProps) {
   const [showNote, setShowNote] = useState(false);
 
   const [isPlacing, setIsPlacing] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState("Para llevar");
+
+  const locations = [
+    { id: "takeaway", label: "Para llevar", icon: "🥡" },
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `mesa-${i + 1}`, label: `Mesa ${i + 1}`, icon: "🪑" })),
+    ...Array.from({ length: 4 }, (_, i) => ({ id: `barra-${i + 1}`, label: `Barra ${i + 1}`, icon: "🍺" })),
+  ];
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || isPlacing) return;
     setIsPlacing(true);
-    const order = await placeOrder(note || undefined);
+    const order = await placeOrder(selectedLocation, note || undefined);
     setIsPlacing(false);
-    
+
+
     if (order) {
       onOrderPlaced();
     } else {
@@ -130,7 +138,30 @@ export function OrderSummary({ onClose, onOrderPlaced }: OrderSummaryProps) {
             rows={2}
           />
         )}
+
+        <div className="pt-2">
+          <p className="text-xs font-900 text-muted-foreground uppercase mb-2 ml-1">Ubicación del pedido</p>
+          <div className="grid grid-cols-3 gap-2 pb-4">
+            {locations.map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => setSelectedLocation(loc.label)}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all active:scale-95 ${
+                  selectedLocation === loc.label
+                    ? "bg-primary/10 border-primary shadow-sm"
+                    : "bg-card border-border border-dashed opacity-70"
+                }`}
+              >
+                <span className="text-lg mb-0.5">{loc.icon}</span>
+                <span className={`text-[10px] font-800 ${selectedLocation === loc.label ? "text-primary" : "text-muted-foreground"}`}>
+                  {loc.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
 
       {/* Total + Submit */}
       <div className="px-4 pb-6 pt-3 border-t border-border bg-background">

@@ -37,7 +37,11 @@ function OrderCard({ order, flavors, extras }: { order: Order; flavors: ReturnTy
                 <Icon className="w-3 h-3 inline mr-1" />
                 {cfg.label}
               </span>
+              <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded-lg text-[10px] font-800 uppercase">
+                {order.location}
+              </span>
             </div>
+
             <p className="text-xs text-muted-foreground mt-0.5">
               {new Date(order.createdAt).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })} · {order.items.length} {order.items.length === 1 ? "producto" : "productos"}
             </p>
@@ -141,11 +145,10 @@ export function ActiveOrders() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-700 transition-all active:scale-95 ${
-                isActive
+              className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-700 transition-all active:scale-95 ${isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-muted text-muted-foreground"
-              }`}
+                }`}
             >
               {label}
             </button>

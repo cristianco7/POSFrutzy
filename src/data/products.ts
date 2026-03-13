@@ -13,9 +13,9 @@ export const CATEGORIES: Category[] = [
 
 export const PRODUCTS: Product[] = [
   // Especial Infantil
-  { id: "p1", categoryId: "especial-infantil", name: "Gusa Split", price: 8000, hasFlavors: true, maxFlavors: 2, available: true },
+  { id: "p1", categoryId: "especial-infantil", name: "Gusa Split", price: 8000, hasFlavors: true, maxFlavors: 3, available: true },
   { id: "p2", categoryId: "especial-infantil", name: "Peppa Pig", price: 5000, hasFlavors: true, maxFlavors: 1, available: true },
-  { id: "p3", categoryId: "especial-infantil", name: "Abejita", price: 7000, hasFlavors: true, maxFlavors: 1, available: true },
+  { id: "p3", categoryId: "especial-infantil", name: "Abejita", price: 7000, hasFlavors: true, maxFlavors: 2, available: true },
   { id: "p4", categoryId: "especial-infantil", name: "Payasito", price: 7000, hasFlavors: true, maxFlavors: 1, available: true },
   { id: "p5", categoryId: "especial-infantil", name: "Canasta Osito", price: 7000, hasFlavors: true, maxFlavors: 2, available: true },
   { id: "p6", categoryId: "especial-infantil", name: "Pollito", price: 7000, hasFlavors: true, maxFlavors: 1, available: true },
@@ -69,12 +69,13 @@ export const PRODUCTS: Product[] = [
 ];
 
 export const FLAVORS: Flavor[] = [
-  { id: "vanilla", name: "Vainilla", color: "hsl(42 100% 72%)" },
-  { id: "chocolate", name: "Chocolate", color: "hsl(20 60% 40%)" },
-  { id: "strawberry", name: "Fresa", color: "hsl(350 75% 65%)" },
-  { id: "mango", name: "Mango", color: "hsl(38 95% 58%)" },
-  { id: "oreo", name: "Oreo", color: "hsl(0 0% 25%)" },
+  { id: "vanilla", name: "Vainilla", color: "hsl(42 100% 72%)", available: true },
+  { id: "chocolate", name: "Chocolate", color: "hsl(20 60% 40%)", available: true },
+  { id: "strawberry", name: "Fresa", color: "hsl(350 75% 65%)", available: true },
+  { id: "mango", name: "Mango", color: "hsl(38 95% 58%)", available: true },
+  { id: "oreo", name: "Oreo", color: "hsl(0 0% 25%)", available: true },
 ];
+
 
 export const EXTRAS: Extra[] = [
   { id: "queso", name: "Queso", price: 2000 },

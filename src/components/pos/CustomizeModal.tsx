@@ -91,11 +91,14 @@ export function CustomizeModal({ product, onBack, onAddToCart }: CustomizeModalP
                 return (
                   <button
                     key={flavor.id}
-                    onClick={() => toggleFlavor(flavor.id)}
-                    className={`flex items-center gap-2 rounded-xl px-3 py-2.5 border-2 transition-all duration-150 active:scale-95 ${
-                      selected
-                        ? "border-primary bg-secondary"
-                        : "border-border bg-card"
+                    onClick={() => flavor.available && toggleFlavor(flavor.id)}
+                    disabled={!flavor.available}
+                    className={`flex items-center gap-2 rounded-xl px-3 py-2.5 border-2 transition-all duration-150 ${
+                      !flavor.available
+                        ? "opacity-40 grayscale-[0.5] border-muted bg-muted/20 cursor-not-allowed"
+                        : selected
+                        ? "border-primary bg-secondary active:scale-95"
+                        : "border-border bg-card active:scale-95"
                     }`}
                   >
                     <span
@@ -104,10 +107,16 @@ export function CustomizeModal({ product, onBack, onAddToCart }: CustomizeModalP
                     >
                       {selected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                     </span>
-                    <span className={`text-sm font-600 ${selected ? "text-primary" : "text-foreground"}`}>
-                      {flavor.name}
-                    </span>
+                    <div className="flex flex-col items-start translate-y-[1px]">
+                      <span className={`text-sm font-600 leading-tight ${selected ? "text-primary" : "text-foreground"}`}>
+                        {flavor.name}
+                      </span>
+                      {!flavor.available && (
+                        <span className="text-[9px] font-900 text-destructive uppercase tracking-tighter">AGOTADO</span>
+                      )}
+                    </div>
                   </button>
+
                 );
               })}
             </div>

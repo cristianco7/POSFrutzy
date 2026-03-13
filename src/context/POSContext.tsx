@@ -25,11 +25,14 @@ interface POSContextType {
 
   // Orders
   orders: Order[];
-  placeOrder: (note?: string) => Promise<Order | null>;
+  placeOrder: (location: string, note?: string) => Promise<Order | null>;
+  toggleFlavorAvailability: (id: string, available: boolean) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   orderCounter: number;
+
   loading: boolean;
 }
+
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
@@ -47,7 +50,19 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
+
+      // Fetch Flavors
+      const { data: flavorsData, error: flavorsError } = await supabase
+        .from('flavors')
+        .select('*')
+        .order('name');
       
+      if (!flavorsError && flavorsData && flavorsData.length > 0) {
+        setFlavors(flavorsData);
+      } else if (flavorsError && (flavorsError as any).code !== 'PGRST116') {
+        console.error("Error fetching flavors:", flavorsError);
+      }
+
       // Fetch Orders
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -59,12 +74,14 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
           ...o,
           orderNumber: o.order_number,
           customerNote: o.customer_note,
+          location: o.location || "Para llevar",
           createdAt: new Date(o.created_at),
           updatedAt: new Date(o.updated_at),
           items: typeof o.items === 'string' ? JSON.parse(o.items) : o.items
 
+
         })));
-        
+
         // Calculate next order counter
         if (ordersData.length > 0) {
           const maxCounter = Math.max(...ordersData.map(o => o.order_number || 0));
@@ -79,7 +96,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     fetchInitialData();
 
     // Subscribe to real-time changes
-    const channel = supabase
+    const ordersSubscription = supabase
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -90,15 +107,17 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
             setOrders((prev) => {
               // Check if order already exists (from optimistic update)
               if (prev.find(o => o.id === newOrder.id)) return prev;
-              
+
               return [{
                 ...newOrder,
                 orderNumber: (newOrder as any).order_number,
                 customerNote: (newOrder as any).customer_note,
+                location: (newOrder as any).location || "Para llevar",
                 createdAt: new Date((newOrder as any).created_at),
                 updatedAt: new Date((newOrder as any).updated_at),
                 items: typeof newOrder.items === 'string' ? JSON.parse(newOrder.items as any) : newOrder.items
               }, ...prev];
+
             });
             setOrderCounter(c => Math.max(c, ((newOrder as any).order_number || 0) + 1));
           } else if (payload.eventType === 'UPDATE') {
@@ -109,9 +128,11 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
                 ...updatedOrder,
                 orderNumber: (updatedOrder as any).order_number,
                 customerNote: (updatedOrder as any).customer_note,
+                location: (updatedOrder as any).location || "Para llevar",
                 createdAt: new Date((updatedOrder as any).created_at),
                 updatedAt: new Date((updatedOrder as any).updated_at),
                 items: typeof updatedOrder.items === 'string' ? JSON.parse(updatedOrder.items as any) : updatedOrder.items
+
               } : o))
             );
 
@@ -122,9 +143,26 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       )
       .subscribe();
 
+    // Real-time flavors
+    const flavorsSubscription = supabase
+      .channel('flavors_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'flavors' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updatedFlavor = payload.new as Flavor;
+          setFlavors((prev) => prev.map(f => f.id === updatedFlavor.id ? updatedFlavor : f));
+        } else if (payload.eventType === 'INSERT') {
+          setFlavors((prev) => [...prev, payload.new as Flavor].sort((a, b) => a.name.localeCompare(b.name)));
+        } else if (payload.eventType === 'DELETE') {
+          setFlavors((prev) => prev.filter(f => f.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(ordersSubscription);
+      supabase.removeChannel(flavorsSubscription);
     };
+
   }, []);
 
   // No longer using localStorage for persistence
@@ -166,7 +204,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const placeOrder = useCallback(
-    async (note?: string): Promise<Order | null> => {
+    async (location: string, note?: string): Promise<Order | null> => {
       const orderId = crypto.randomUUID();
       const orderData = {
         id: orderId,
@@ -174,6 +212,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         items: [...cart],
         status: "pending" as OrderStatus,
         total: cartTotal,
+        location,
         customerNote: note,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -190,6 +229,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         items: JSON.stringify(cart),
         status: "pending",
         total: cartTotal,
+        location: location,
         customer_note: note,
         created_at: orderData.createdAt.toISOString(),
         updated_at: orderData.updatedAt.toISOString(),
@@ -213,6 +253,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     [cart, cartTotal, orderCounter]
   );
 
+  const toggleFlavorAvailability = useCallback(async (id: string, available: boolean) => {
+    // Optimistic Update
+    setFlavors(prev => prev.map(f => f.id === id ? { ...f, available } : f));
+
+    const { error } = await supabase
+      .from('flavors')
+      .update({ available })
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error updating flavor availability:", error);
+      // Revert on error
+      const { data } = await supabase.from('flavors').select('*').eq('id', id).single();
+      if (data) {
+        setFlavors(prev => prev.map(f => f.id === id ? data : f));
+      }
+    }
+  }, []);
 
 
   const updateOrderStatus = useCallback(async (orderId: string, status: OrderStatus) => {
@@ -252,6 +310,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         cartCount,
         orders,
         placeOrder,
+        toggleFlavorAvailability,
         updateOrderStatus,
         orderCounter,
         loading,

@@ -16,18 +16,16 @@ function KitchenCard({ order, flavors, extras }: { order: Order; flavors: Return
 
   return (
     <div
-      className={`rounded-3xl border-2 p-4 shadow-card ${
-        order.status === "pending"
+      className={`rounded-3xl border-2 p-4 shadow-card ${order.status === "pending"
           ? "border-warning bg-warning/5"
           : "border-kitchen bg-kitchen/5"
-      }`}
+        }`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-              order.status === "pending" ? "bg-warning text-warning-foreground" : "bg-kitchen text-kitchen-foreground"
-            }`}
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center ${order.status === "pending" ? "bg-warning text-warning-foreground" : "bg-kitchen text-kitchen-foreground"
+              }`}
           >
             <span className="font-900 text-xl">#{order.orderNumber}</span>
           </div>
@@ -35,7 +33,13 @@ function KitchenCard({ order, flavors, extras }: { order: Order; flavors: Return
             <p className={`text-xs font-700 ${order.status === "pending" ? "text-warning" : "text-kitchen"}`}>
               {order.status === "pending" ? "⏳ PENDIENTE" : "👨‍🍳 PREPARANDO"}
             </p>
-            <p className="text-xs text-muted-foreground">{elapsed}min · {order.items.length} prod.</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="bg-foreground/10 text-foreground px-1.5 py-0.5 rounded-md text-[9px] font-900 uppercase">
+                {order.location}
+              </span>
+              <p className="text-[10px] text-muted-foreground">{elapsed}min · {order.items.length} prod.</p>
+            </div>
+
           </div>
         </div>
         <span className="text-xl font-900 text-foreground">{formatPrice(order.total)}</span>
