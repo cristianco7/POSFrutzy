@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Ice cream shop — warm coral + cream palette */
+    --background: 35 50% 97%;
+    --foreground: 15 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 15 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 15 30% 15%;
+
+    /* Coral-pink primary */
+    --primary: 350 72% 56%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Soft rose secondary */
+    --secondary: 350 40% 94%;
+    --secondary-foreground: 350 72% 45%;
+
+    /* Warm honey accent */
+    --accent: 42 100% 64%;
+    --accent-foreground: 15 30% 15%;
+
+    --muted: 30 20% 93%;
+    --muted-foreground: 15 15% 50%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 350 72% 56%;
+
+    --radius: 1rem;
+
+    /* Custom tokens */
+    --success: 145 60% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 95% 55%;
+    --warning-foreground: 15 30% 15%;
+    --kitchen: 220 60% 55%;
+    --kitchen-foreground: 0 0% 100%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(350 72% 56%), hsl(15 90% 62%));
+    --gradient-accent: linear-gradient(135deg, hsl(42 100% 64%), hsl(38 95% 55%));
+    --shadow-card: 0 4px 20px -4px hsl(350 72% 56% / 0.15);
+    --shadow-fab: 0 8px 24px -4px hsl(350 72% 56% / 0.4);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 15 30% 15%;
+    --sidebar-primary: 350 72% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 350 40% 94%;
+    --sidebar-accent-foreground: 350 72% 45%;
+    --sidebar-border: 30 20% 88%;
+    --sidebar-ring: 350 72% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-nunito;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  /* Touch-friendly defaults */
+  button, [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  .tab-active {
+    @apply text-primary;
+  }
+  .tab-inactive {
+    @apply text-muted-foreground;
+  }
+  .category-chip {
+    @apply flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-4 text-center text-sm font-700 transition-all duration-200 active:scale-95;
+  }
+  .product-card {
+    @apply rounded-2xl bg-card p-4 shadow-card border border-border active:scale-95 transition-all duration-150 cursor-pointer;
+  }
+  .order-badge-pending {
+    @apply bg-warning/20 text-warning-foreground border border-warning/30 rounded-full px-2 py-0.5 text-xs font-700;
+  }
+  .order-badge-preparing {
+    @apply bg-kitchen/20 text-kitchen border border-kitchen/30 rounded-full px-2 py-0.5 text-xs font-700;
+  }
+  .order-badge-completed {
+    @apply bg-success/20 text-success border border-success/30 rounded-full px-2 py-0.5 text-xs font-700;
+  }
+}
