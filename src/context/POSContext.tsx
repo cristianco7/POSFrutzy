@@ -52,22 +52,25 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
-        .order('createdAt', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (!ordersError && ordersData) {
         setOrders(ordersData.map(o => ({
           ...o,
-          createdAt: new Date(o.createdAt),
-          updatedAt: new Date(o.updatedAt),
+          orderNumber: o.order_number,
+          customerNote: o.customer_note,
+          createdAt: new Date(o.created_at),
+          updatedAt: new Date(o.updated_at),
           items: typeof o.items === 'string' ? JSON.parse(o.items) : o.items
         })));
         
         // Calculate next order counter
         if (ordersData.length > 0) {
-          const maxCounter = Math.max(...ordersData.map(o => o.orderNumber));
+          const maxCounter = Math.max(...ordersData.map(o => o.order_number || 0));
           setOrderCounter(maxCounter + 1);
         }
       }
+
 
       setLoading(false);
     };
@@ -85,21 +88,26 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
             const newOrder = payload.new as Order;
             setOrders((prev) => [{
               ...newOrder,
-              createdAt: new Date(newOrder.createdAt),
-              updatedAt: new Date(newOrder.updatedAt),
+              orderNumber: (newOrder as any).order_number,
+              customerNote: (newOrder as any).customer_note,
+              createdAt: new Date((newOrder as any).created_at),
+              updatedAt: new Date((newOrder as any).updated_at),
               items: typeof newOrder.items === 'string' ? JSON.parse(newOrder.items as any) : newOrder.items
             }, ...prev]);
-            setOrderCounter(c => Math.max(c, (newOrder.orderNumber || 0) + 1));
+            setOrderCounter(c => Math.max(c, ((newOrder as any).order_number || 0) + 1));
           } else if (payload.eventType === 'UPDATE') {
             const updatedOrder = payload.new as Order;
             setOrders((prev) =>
               prev.map((o) => (o.id === updatedOrder.id ? {
                 ...updatedOrder,
-                createdAt: new Date(updatedOrder.createdAt),
-                updatedAt: new Date(updatedOrder.updatedAt),
+                orderNumber: (updatedOrder as any).order_number,
+                customerNote: (updatedOrder as any).customer_note,
+                createdAt: new Date((updatedOrder as any).created_at),
+                updatedAt: new Date((updatedOrder as any).updated_at),
                 items: typeof updatedOrder.items === 'string' ? JSON.parse(updatedOrder.items as any) : updatedOrder.items
               } : o))
             );
+
           } else if (payload.eventType === 'DELETE') {
             setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
           }
@@ -154,13 +162,13 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     async (note?: string): Promise<Order | null> => {
       const orderData = {
         id: crypto.randomUUID(),
-        orderNumber: orderCounter,
+        order_number: orderCounter,
         items: JSON.stringify(cart),
         status: "pending",
         total: cartTotal,
-        customerNote: note,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        customer_note: note,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       const { data, error } = await supabase
@@ -168,6 +176,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         .insert([orderData])
         .select()
         .single();
+
 
       if (error) {
         console.error("Error placing order:", error);
@@ -189,10 +198,11 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const updateOrderStatus = useCallback(async (orderId: string, status: OrderStatus) => {
     const { error } = await supabase
       .from('orders')
-      .update({ status, updatedAt: new Date().toISOString() })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', orderId);
 
     if (error) {
+
       console.error("Error updating order status:", error);
     }
   }, []);
