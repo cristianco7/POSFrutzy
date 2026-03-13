@@ -213,7 +213,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     [cart, cartTotal, orderCounter]
   );
 
-  );
+
 
   const updateOrderStatus = useCallback(async (orderId: string, status: OrderStatus) => {
     // Optimistic Update
