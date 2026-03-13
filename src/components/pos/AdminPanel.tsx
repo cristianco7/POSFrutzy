@@ -4,10 +4,12 @@ import { formatPrice, CATEGORIES as DEFAULT_CATS } from "@/data/products";
 import type { Product, Flavor, Extra } from "@/types/pos";
 import { Plus, Pencil, Trash2, Check, X, Settings } from "lucide-react";
 
-type AdminTab = "products" | "flavors" | "extras";
+type AdminTab = "products" | "flavors" | "extras" | "cash" | "stats";
+
 
 export function AdminPanel() {
-  const { categories, products, flavors, extras, setProducts, setFlavors, setExtras, toggleFlavorAvailability } = usePOS();
+  const { categories, products, flavors, extras, orders, setProducts, setFlavors, setExtras, toggleFlavorAvailability, closeRegister } = usePOS();
+
 
   const [tab, setTab] = useState<AdminTab>("products");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -17,7 +19,11 @@ export function AdminPanel() {
   const [showAddFlavor, setShowAddFlavor] = useState(false);
   const [showAddExtra, setShowAddExtra] = useState(false);
 
+  // Archive view state
+  const [viewingArchivedDate, setViewingArchivedDate] = useState<string | null>(null);
+
   // Product form
+
   const [pName, setPName] = useState("");
   const [pPrice, setPPrice] = useState("");
   const [pCategory, setPCategory] = useState(categories[0]?.id ?? "");
@@ -34,7 +40,68 @@ export function AdminPanel() {
 
   const resetProductForm = () => { setPName(""); setPPrice(""); setPCategory(categories[0]?.id ?? ""); setPHasFlavors(true); setPMaxFlavors("1"); };
 
+  const currentDayOrders = orders.filter(o => o.status === 'completed' && !o.archived_date);
+  const totalDaySales = currentDayOrders.reduce((sum, o) => sum + o.total, 0);
+
+  const handleCloseRegister = () => {
+    if (window.confirm(`¿Estás seguro de cerrar la caja de hoy? Ventas totales: ${formatPrice(totalDaySales)}`)) {
+      closeRegister();
+    }
+  };
+
+  // Group Archived Orders by Date
+  const archivedOrders = orders.filter(o => o.status === 'completed' && o.archived_date);
+  
+  const archivedGroups: Record<string, { total: number; orderCount: number; dateStr: string }> = {};
+
+  archivedOrders.forEach(o => {
+    // Group by the day it was archived, ignoring time. 
+    // archived_date is an ISO string, so we extract YYYY-MM-DD
+    const dateKey = new Date(o.archived_date as Date | string).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    if (!archivedGroups[dateKey]) {
+      archivedGroups[dateKey] = { total: 0, orderCount: 0, dateStr: dateKey };
+    }
+    archivedGroups[dateKey].total += o.total;
+    archivedGroups[dateKey].orderCount += 1;
+  });
+
+  const archivedList = Object.values(archivedGroups).sort((a, b) => new Date(b.dateStr).getTime() - new Date(a.dateStr).getTime()); // Rough sort by date string (might not be perfect down to the hour, but good enough for display)
+
+  // Stats Logic
+
+  const allCompletedOrders = orders.filter(o => o.status === 'completed');
+  
+  const productCount: Record<string, { count: number; name: string }> = {};
+  const flavorCount: Record<string, { count: number; name: string }> = {};
+
+  allCompletedOrders.forEach(order => {
+    order.items.forEach(item => {
+      // Products
+      const pId = item.product.id;
+      if (!productCount[pId]) productCount[pId] = { count: 0, name: item.product.name };
+      productCount[pId].count += item.quantity;
+
+      // Flavors
+      if (item.product.hasFlavors && item.customization.flavors.length > 0) {
+        item.customization.flavors.forEach(fId => {
+          const flavorObj = flavors.find(f => f.id === fId);
+          if (flavorObj) {
+            if (!flavorCount[fId]) flavorCount[fId] = { count: 0, name: flavorObj.name };
+            flavorCount[fId].count += item.quantity; // Each product bought counts as a vote for that flavor
+          }
+        });
+      }
+    });
+  });
+
+  const topProducts = Object.values(productCount).sort((a, b) => b.count - a.count).slice(0, 5);
+  const topFlavors = Object.values(flavorCount).sort((a, b) => b.count - a.count).slice(0, 5);
+
+
   const handleAddProduct = () => {
+
+
     if (!pName.trim() || !pPrice) return;
     const newProduct: Product = {
       id: `custom-${Date.now()}`,
@@ -86,19 +153,20 @@ export function AdminPanel() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 px-4 pb-3">
-        {(["products", "flavors", "extras"] as AdminTab[]).map((t) => (
+      <div className="flex gap-1 px-4 pb-3 flex-wrap">
+        {(["products", "flavors", "extras", "cash", "stats"] as AdminTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-xl py-2 text-xs font-700 transition-all active:scale-95 ${
+            className={`flex-1 rounded-xl py-2 px-1 min-w-[30%] text-xs font-700 transition-all active:scale-95 ${
               tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             }`}
           >
-            {t === "products" ? "Productos" : t === "flavors" ? "Sabores" : "Extras"}
+            {t === "products" ? "Productos" : t === "flavors" ? "Sabores" : t === "extras" ? "Extras" : t === "cash" ? "Caja" : "Estadísticas"}
           </button>
         ))}
       </div>
+
 
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         {/* PRODUCTS TAB */}
@@ -251,7 +319,7 @@ export function AdminPanel() {
                       <span className="w-8 h-8 rounded-full border-2 border-border shadow-sm" style={{ background: flavor.color }} />
                       <div className="flex flex-col">
                         <span className="font-700 text-foreground text-sm leading-tight">{flavor.name}</span>
-                        <span className={`text-[10px] font-900 ${flavor.available ? 'text-success' : 'text-destructive'}`}>
+                        <span className={`text-xs font-900 ${flavor.available ? 'text-success' : 'text-destructive'}`}>
                           {flavor.available ? 'DISPONIBLE' : 'AGOTADO'}
                         </span>
                       </div>
@@ -344,6 +412,92 @@ export function AdminPanel() {
             )}
           </div>
         )}
+
+        {/* CASH TAB */}
+        {tab === "cash" && (
+          <div className="space-y-6">
+            <div className="bg-card border border-border rounded-2xl p-6 text-center shadow-sm">
+              <h3 className="text-sm font-800 text-muted-foreground uppercase tracking-wider mb-2">Ventas del Turno</h3>
+              <p className="text-4xl font-900 text-primary">{formatPrice(totalDaySales)}</p>
+              <p className="text-xs text-muted-foreground mt-2">{currentDayOrders.length} pedidos completados</p>
+            </div>
+
+            <button
+              onClick={handleCloseRegister}
+              disabled={currentDayOrders.length === 0}
+              className="w-full py-4 rounded-2xl bg-destructive text-destructive-foreground font-800 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cerrar Caja
+            </button>
+            <p className="text-xs text-muted-foreground text-center px-4">
+              Al cerrar la caja, las ventas actuales se archivarán y dejarán la caja en $0 para el siguiente turno.
+            </p>
+            <div className="pt-6">
+              <h3 className="text-lg font-900 text-foreground mb-4">Cierres Anteriores</h3>
+              {archivedList.length > 0 ? (
+                <div className="space-y-3">
+                  {archivedList.map((group, idx) => (
+                    <div key={idx} className="bg-card border border-border rounded-xl p-4 shadow-sm flex items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]" onClick={() => setViewingArchivedDate(group.dateStr)}>
+                      <div>
+                        <p className="font-800 text-sm text-foreground capitalize">{group.dateStr}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{group.orderCount} pedidos</p>
+                      </div>
+                      <p className="font-900 text-primary">{formatPrice(group.total)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-muted/50 border border-border rounded-2xl py-8 text-center text-muted-foreground">
+                  <p className="text-sm font-700">No hay cierres de caja anteriores.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* STATS TAB */}
+        {tab === "stats" && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-900 text-foreground mb-4">Estadísticas (Histórico)</h3>
+
+            
+            <div className="space-y-4">
+              <h4 className="text-sm font-800 text-muted-foreground uppercase tracking-wider">Top 5 Sabores Favoritos</h4>
+              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3">
+                {topFlavors.length > 0 ? topFlavors.map((flavor, idx) => (
+                  <div key={idx} className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-900">{idx + 1}</span>
+                      <span className="font-700 text-sm text-foreground">{flavor.name}</span>
+                    </div>
+                    <span className="text-xs font-800 text-muted-foreground">{flavor.count} ped.</span>
+                  </div>
+                )) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">No hay datos suficientes.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4 mt-6">
+              <h4 className="text-sm font-800 text-muted-foreground uppercase tracking-wider">Top 5 Productos Estrella</h4>
+              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3">
+                {topProducts.length > 0 ? topProducts.map((prod, idx) => (
+                  <div key={idx} className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-accent/20 text-accent-foreground flex items-center justify-center text-xs font-900">{idx + 1}</span>
+                      <span className="font-700 text-sm text-foreground">{prod.name}</span>
+                    </div>
+                    <span className="text-xs font-800 text-muted-foreground">{prod.count} unid.</span>
+                  </div>
+                )) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">No hay datos suficientes.</p>
+                )}
+              </div>
+            </div>
+            
+          </div>
+        )}
+
       </div>
     </div>
   );

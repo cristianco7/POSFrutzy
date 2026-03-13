@@ -153,7 +153,7 @@ export function OrderSummary({ onClose, onOrderPlaced }: OrderSummaryProps) {
                 }`}
               >
                 <span className="text-lg mb-0.5">{loc.icon}</span>
-                <span className={`text-[10px] font-800 ${selectedLocation === loc.label ? "text-primary" : "text-muted-foreground"}`}>
+                <span className={`text-xs font-800 ${selectedLocation === loc.label ? "text-primary" : "text-muted-foreground"}`}>
                   {loc.label}
                 </span>
               </button>

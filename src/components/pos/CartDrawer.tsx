@@ -18,7 +18,7 @@ export function CartFab({ onOpen }: CartFabProps) {
     >
       <div className="relative">
         <ShoppingCart className="w-5 h-5" />
-        <span className="absolute -top-2 -right-2 w-4 h-4 bg-accent text-accent-foreground rounded-full text-[10px] font-900 flex items-center justify-center">
+        <span className="absolute -top-2 -right-2 w-4 h-4 bg-accent text-accent-foreground rounded-full text-xs font-900 flex items-center justify-center">
           {cartCount}
         </span>
       </div>

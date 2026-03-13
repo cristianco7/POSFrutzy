@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
+
 import type { CartItem, Order, OrderStatus, Product, Category, Flavor, Extra } from "@/types/pos";
 import { CATEGORIES, PRODUCTS, FLAVORS, EXTRAS } from "@/data/products";
 import { supabase } from "@/lib/supabase";
@@ -28,10 +29,12 @@ interface POSContextType {
   placeOrder: (location: string, note?: string) => Promise<Order | null>;
   toggleFlavorAvailability: (id: string, available: boolean) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  closeRegister: () => Promise<void>;
   orderCounter: number;
 
   loading: boolean;
 }
+
 
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
@@ -288,11 +291,28 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const closeRegister = useCallback(async () => {
+    // Get all completed orders that are not archived
+    const completedOrders = orders.filter(o => o.status === 'completed' && !o.archived_date);
+    if (completedOrders.length === 0) return;
 
+    const archiveDate = new Date().toISOString();
+    
+    // Optimistic Update
+    setOrders(prev => prev.map(o => 
+      (o.status === 'completed' && !o.archived_date) ? { ...o, archived_date: new Date(archiveDate) } : o
+    ));
 
-  return (
-    <POSContext.Provider
-      value={{
+    const promises = completedOrders.map(o => 
+      supabase.from('orders').update({ archived_date: archiveDate }).eq('id', o.id)
+    );
+
+    await Promise.all(promises);
+  }, [orders]);
+
+  const value = useMemo(
+    () => ({
+
         categories,
         products,
         flavors,
@@ -312,11 +332,19 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         placeOrder,
         toggleFlavorAvailability,
         updateOrderStatus,
+        closeRegister,
         orderCounter,
-        loading,
-      }}
 
-    >
+        loading,
+    }),
+    [
+      categories, products, flavors, extras, cart, cartCount, cartTotal, orders, orderCounter, loading,
+      addToCart, removeFromCart, updateCartItemQuantity, clearCart, placeOrder, toggleFlavorAvailability, updateOrderStatus, closeRegister
+    ]
+  );
+
+  return (
+    <POSContext.Provider value={value}>
       {children}
     </POSContext.Provider>
   );

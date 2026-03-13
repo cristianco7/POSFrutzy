@@ -34,10 +34,10 @@ function KitchenCard({ order, flavors, extras }: { order: Order; flavors: Return
               {order.status === "pending" ? "⏳ PENDIENTE" : "👨‍🍳 PREPARANDO"}
             </p>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="bg-foreground/10 text-foreground px-1.5 py-0.5 rounded-md text-[9px] font-900 uppercase">
+              <span className="bg-foreground/10 text-foreground px-1.5 py-0.5 rounded-md text-[11px] font-900 uppercase">
                 {order.location}
               </span>
-              <p className="text-[10px] text-muted-foreground">{elapsed}min · {order.items.length} prod.</p>
+              <p className="text-xs text-muted-foreground">{elapsed}min · {order.items.length} prod.</p>
             </div>
 
           </div>

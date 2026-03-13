@@ -56,5 +56,6 @@ export interface Order {
   createdAt: Date;
   updatedAt: Date;
   customerNote?: string;
+  archived_date?: Date;
 }
 

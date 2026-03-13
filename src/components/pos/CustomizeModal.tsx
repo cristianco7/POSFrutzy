@@ -112,7 +112,7 @@ export function CustomizeModal({ product, onBack, onAddToCart }: CustomizeModalP
                         {flavor.name}
                       </span>
                       {!flavor.available && (
-                        <span className="text-[9px] font-900 text-destructive uppercase tracking-tighter">AGOTADO</span>
+                        <span className="text-[10px] font-900 text-destructive uppercase tracking-tighter">AGOTADO</span>
                       )}
                     </div>
                   </button>

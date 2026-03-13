@@ -37,7 +37,7 @@ function OrderCard({ order, flavors, extras }: { order: Order; flavors: ReturnTy
                 <Icon className="w-3 h-3 inline mr-1" />
                 {cfg.label}
               </span>
-              <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded-lg text-[10px] font-800 uppercase">
+              <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded-lg text-xs font-800 uppercase">
                 {order.location}
               </span>
             </div>

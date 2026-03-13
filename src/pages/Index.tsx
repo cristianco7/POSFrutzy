@@ -112,12 +112,12 @@ function AppShell() {
                 <div className="relative">
                   <Icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} strokeWidth={isActive ? 2.5 : 2} />
                   {badge > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-primary text-primary-foreground rounded-full text-[8px] font-900 flex items-center justify-center">
+                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-primary text-primary-foreground rounded-full text-[10px] font-900 flex items-center justify-center">
                       {badge > 9 ? "9+" : badge}
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] font-700 ${isActive ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+                <span className={`text-xs font-700 ${isActive ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
                 {isActive && (
                   <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary" />
                 )}
