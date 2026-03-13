@@ -39,8 +39,9 @@ function OrderCard({ order, flavors, extras }: { order: Order; flavors: ReturnTy
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {order.createdAt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })} · {order.items.length} {order.items.length === 1 ? "producto" : "productos"}
+              {new Date(order.createdAt).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })} · {order.items.length} {order.items.length === 1 ? "producto" : "productos"}
             </p>
+
           </div>
         </div>
         <div className="flex items-center gap-2">

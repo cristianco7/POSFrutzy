@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { CartItem, Order, OrderStatus, Product, Category, Flavor, Extra } from "@/types/pos";
 import { CATEGORIES, PRODUCTS, FLAVORS, EXTRAS } from "@/data/products";
+import { supabase } from "@/lib/supabase";
 
 interface POSContextType {
   // Catalog (editable in admin)
@@ -24,52 +25,95 @@ interface POSContextType {
 
   // Orders
   orders: Order[];
-  placeOrder: (note?: string) => Order;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  placeOrder: (note?: string) => Promise<Order | null>;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   orderCounter: number;
+  loading: boolean;
 }
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
-const STORAGE_KEY = "pos_data";
-
-function loadFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    // Rehydrate dates
-    if (parsed.orders) {
-      parsed.orders = parsed.orders.map((o: Order) => ({
-        ...o,
-        createdAt: new Date(o.createdAt),
-        updatedAt: new Date(o.updatedAt),
-      }));
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 export function POSProvider({ children }: { children: React.ReactNode }) {
-  const stored = loadFromStorage();
-
-  const [categories, setCategories] = useState<Category[]>(stored?.categories ?? CATEGORIES);
-  const [products, setProducts] = useState<Product[]>(stored?.products ?? PRODUCTS);
-  const [flavors, setFlavors] = useState<Flavor[]>(stored?.flavors ?? FLAVORS);
-  const [extras, setExtras] = useState<Extra[]>(stored?.extras ?? EXTRAS);
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [flavors, setFlavors] = useState<Flavor[]>(FLAVORS);
+  const [extras, setExtras] = useState<Extra[]>(EXTRAS);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>(stored?.orders ?? []);
-  const [orderCounter, setOrderCounter] = useState<number>(stored?.orderCounter ?? 1);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [orderCounter, setOrderCounter] = useState<number>(1);
+  const [loading, setLoading] = useState(true);
 
-  // Persist catalog and orders to localStorage
+  // Initial Fetch and Real-time Subscription
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ categories, products, flavors, extras, orders, orderCounter })
-    );
-  }, [categories, products, flavors, extras, orders, orderCounter]);
+    const fetchInitialData = async () => {
+      setLoading(true);
+      
+      // Fetch Orders
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .order('createdAt', { ascending: false });
+
+      if (!ordersError && ordersData) {
+        setOrders(ordersData.map(o => ({
+          ...o,
+          createdAt: new Date(o.createdAt),
+          updatedAt: new Date(o.updatedAt),
+          items: typeof o.items === 'string' ? JSON.parse(o.items) : o.items
+        })));
+        
+        // Calculate next order counter
+        if (ordersData.length > 0) {
+          const maxCounter = Math.max(...ordersData.map(o => o.orderNumber));
+          setOrderCounter(maxCounter + 1);
+        }
+      }
+
+      setLoading(false);
+    };
+
+    fetchInitialData();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newOrder = payload.new as Order;
+            setOrders((prev) => [{
+              ...newOrder,
+              createdAt: new Date(newOrder.createdAt),
+              updatedAt: new Date(newOrder.updatedAt),
+              items: typeof newOrder.items === 'string' ? JSON.parse(newOrder.items as any) : newOrder.items
+            }, ...prev]);
+            setOrderCounter(c => Math.max(c, (newOrder.orderNumber || 0) + 1));
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedOrder = payload.new as Order;
+            setOrders((prev) =>
+              prev.map((o) => (o.id === updatedOrder.id ? {
+                ...updatedOrder,
+                createdAt: new Date(updatedOrder.createdAt),
+                updatedAt: new Date(updatedOrder.updatedAt),
+                items: typeof updatedOrder.items === 'string' ? JSON.parse(updatedOrder.items as any) : updatedOrder.items
+              } : o))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // No longer using localStorage for persistence
+
 
   const addToCart = useCallback((item: CartItem) => {
     setCart((prev) => {
@@ -107,30 +151,52 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const placeOrder = useCallback(
-    (note?: string): Order => {
-      const order: Order = {
+    async (note?: string): Promise<Order | null> => {
+      const orderData = {
         id: crypto.randomUUID(),
         orderNumber: orderCounter,
-        items: [...cart],
+        items: JSON.stringify(cart),
         status: "pending",
         total: cartTotal,
-        createdAt: new Date(),
-        updatedAt: new Date(),
         customerNote: note,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      setOrders((prev) => [order, ...prev]);
-      setOrderCounter((n) => n + 1);
+
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error placing order:", error);
+        return null;
+      }
+
       setCart([]);
-      return order;
+      // Order list is updated via real-time subscription
+      return {
+        ...data,
+        createdAt: new Date(data.createdAt),
+        updatedAt: new Date(data.updatedAt),
+        items: cart, // use current cart for immediate return
+      };
     },
     [cart, cartTotal, orderCounter]
   );
 
-  const updateOrderStatus = useCallback((orderId: string, status: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status, updatedAt: new Date() } : o))
-    );
+  const updateOrderStatus = useCallback(async (orderId: string, status: OrderStatus) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status, updatedAt: new Date().toISOString() })
+      .eq('id', orderId);
+
+    if (error) {
+      console.error("Error updating order status:", error);
+    }
   }, []);
+
 
   return (
     <POSContext.Provider
@@ -154,7 +220,9 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         placeOrder,
         updateOrderStatus,
         orderCounter,
+        loading,
       }}
+
     >
       {children}
     </POSContext.Provider>

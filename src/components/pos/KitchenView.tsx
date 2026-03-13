@@ -11,7 +11,8 @@ function KitchenCard({ order, flavors, extras }: { order: Order; flavors: Return
   const getExtraNames = (ids: string[]) =>
     ids.map((id) => extras.find((e) => e.id === id)?.name ?? id).join(", ");
 
-  const elapsed = Math.floor((Date.now() - order.createdAt.getTime()) / 60000);
+  const elapsed = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
+
 
   return (
     <div

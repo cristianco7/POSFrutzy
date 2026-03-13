@@ -13,11 +13,22 @@ export function OrderSummary({ onClose, onOrderPlaced }: OrderSummaryProps) {
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
 
-  const handlePlaceOrder = () => {
-    if (cart.length === 0) return;
-    placeOrder(note || undefined);
-    onOrderPlaced();
+  const [isPlacing, setIsPlacing] = useState(false);
+
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0 || isPlacing) return;
+    setIsPlacing(true);
+    const order = await placeOrder(note || undefined);
+    setIsPlacing(false);
+    
+    if (order) {
+      onOrderPlaced();
+    } else {
+      // In a real app we'd show an error toast here
+      alert("Error al enviar el pedido. Por favor intente de nuevo.");
+    }
   };
+
 
   const getFlavorNames = (ids: string[]) =>
     ids.map((id) => flavors.find((f) => f.id === id)?.name ?? id).join(", ");
@@ -129,11 +140,13 @@ export function OrderSummary({ onClose, onOrderPlaced }: OrderSummaryProps) {
         </div>
         <button
           onClick={handlePlaceOrder}
-          className="w-full rounded-2xl py-4 flex items-center justify-center gap-3 bg-gradient-hero text-primary-foreground font-800 text-base active:scale-95 transition-transform shadow-fab"
+          disabled={isPlacing}
+          className={`w-full rounded-2xl py-4 flex items-center justify-center gap-3 bg-gradient-hero text-primary-foreground font-800 text-base active:scale-95 transition-transform shadow-fab ${isPlacing ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           <Send className="w-5 h-5" />
-          Enviar a cocina
+          {isPlacing ? "Enviando..." : "Enviar a cocina"}
         </button>
+
       </div>
     </div>
   );
